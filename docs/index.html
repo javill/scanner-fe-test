@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ověření ceny — klia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="scan.css">
+</head>
+<body>
+
+  <header id="header">
+    <img src="img/kliaB.jpg" alt="klia" id="logo" />
+  </header>
+
+  <main id="main">
+    <section id="product-image-wrap">
+      <img id="pic" src="" alt="Náhled produktu" />
+    </section>
+
+    <section id="product-info">
+      <div id="product-card" class="hidden">
+        <div class="info-row">
+          <span class="info-label">Název</span>
+          <span id="name" class="info-value name-value"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Kód</span>
+          <span id="kliacode" class="info-value code-value"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Balení</span>
+          <span id="munit" class="info-value code-value"></span>
+        </div>
+        <div class="info-row price-row">
+          <span class="info-label">Cena bez DPH</span>
+          <span id="price" class="info-value price-value"></span>
+        </div>
+      </div>
+
+      <div id="error-card" class="hidden">
+        <div id="error-icon">✕</div>
+        <p id="error-msg">Položka nenalezena</p>
+      </div>
+
+      <div id="loading" class="hidden">
+        <div class="spinner"></div>
+      </div>
+    </section>
+  </main>
+
+  <button id="demo-btn" onclick="loadDemo()">Načti zboží</button>
+
+  <div id="idle-state">
+    <svg id="barcode-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 40" fill="currentColor">
+      <rect x="0"  width="4"  height="40"/><rect x="7"  width="2"  height="40"/>
+      <rect x="12" width="6"  height="40"/><rect x="21" width="2"  height="40"/>
+      <rect x="26" width="4"  height="40"/><rect x="33" width="2"  height="40"/>
+      <rect x="38" width="6"  height="40"/><rect x="47" width="2"  height="40"/>
+      <rect x="52" width="4"  height="40"/><rect x="59" width="2"  height="40"/>
+      <rect x="62" width="2"  height="40"/>
+    </svg>
+    <p id="check-price">OVĚŘENÍ CENY ZDE</p>
+    <p id="scan-hint">Přiložte produkt ke čtečce čárových kódů</p>
+  </div>
+
+<footer id="footer">Copyright klia.cz</footer>
+
+  <script>
+    const API_BASE = 'http://192.168.16.5:8985/cz.klia/product/get/';
+    const FALLBACK_IMG = 'img/nahlednenikdispozici.png';
+
+    let inputBuffer = '';
+    let bufferTimer = null;
+
+    const el = id => document.getElementById(id);
+
+    function setState(state) {
+      el('idle-state').classList.toggle('hidden', state !== 'idle');
+      el('product-card').classList.toggle('hidden', state !== 'product');
+      el('error-card').classList.toggle('hidden', state !== 'error');
+      el('loading').classList.toggle('hidden', state !== 'loading');
+      // after scan, restore idle banner after 10 s of inactivity
+      clearTimeout(idleTimer);
+      if (state !== 'idle') {
+        idleTimer = setTimeout(() => setState('idle'), 120_000);
+      }
+    }
+
+    let idleTimer = null;
+
+    const DEMO_PRODUCT = {
+      name: 'Kytice jarních tulipánů — mix barev',
+      price: '189,00',
+      mUnit: '6/bal',
+      kliaCode: 'KL-00471',
+      imageData: null
+    };
+
+    const DEMO_IMG = 'data:image/svg+xml,' + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+        <!-- stem -->
+        <line x1="100" y1="210" x2="100" y2="110" stroke="#4a7c3f" stroke-width="4" stroke-linecap="round"/>
+        <line x1="100" y1="160" x2="75"  y2="140" stroke="#4a7c3f" stroke-width="3" stroke-linecap="round"/>
+        <line x1="100" y1="145" x2="125" y2="128" stroke="#4a7c3f" stroke-width="3" stroke-linecap="round"/>
+        <!-- leaf left -->
+        <ellipse cx="62" cy="138" rx="18" ry="9" fill="#5a9e4a" transform="rotate(-30 62 138)"/>
+        <!-- leaf right -->
+        <ellipse cx="138" cy="122" rx="18" ry="9" fill="#5a9e4a" transform="rotate(30 138 122)"/>
+        <!-- tulip center -->
+        <ellipse cx="100" cy="88" rx="14" ry="22" fill="#e63329"/>
+        <!-- tulip left -->
+        <ellipse cx="78"  cy="95" rx="12" ry="20" fill="#f4845f" transform="rotate(-18 78 95)"/>
+        <!-- tulip right -->
+        <ellipse cx="122" cy="95" rx="12" ry="20" fill="#f4845f" transform="rotate(18 122 95)"/>
+        <!-- tulip far left -->
+        <ellipse cx="60"  cy="105" rx="10" ry="18" fill="#ffb347" transform="rotate(-32 60 105)"/>
+        <!-- tulip far right -->
+        <ellipse cx="140" cy="105" rx="10" ry="18" fill="#ffb347" transform="rotate(32 140 105)"/>
+      </svg>
+    `);
+
+    function loadDemo() {
+      setState('loading');
+      el('pic').src = '';
+      setTimeout(() => {
+        el('name').textContent = DEMO_PRODUCT.name;
+        el('price').textContent = `${DEMO_PRODUCT.price} Kč`;
+        el('kliacode').textContent = DEMO_PRODUCT.kliaCode;
+        el('munit').textContent = DEMO_PRODUCT.mUnit;
+        el('pic').src = DEMO_IMG;
+        setState('product');
+      }, 400);
+    }
+
+    async function fetchProduct(code) {
+      setState('loading');
+      el('pic').src = '';
+
+      try {
+        const res = await fetch(API_BASE + encodeURIComponent(code));
+        if (!res.ok) throw new Error('not found');
+        const data = await res.json();
+
+        el('name').textContent = data.name;
+        el('price').textContent = `${data.price} Kč`;
+        el('kliacode').textContent = data.kliaCode;
+        el('munit').textContent = data.mUnit;
+        el('pic').src = data.imageData
+          ? 'data:image/png;base64,' + data.imageData
+          : FALLBACK_IMG;
+
+        setState('product');
+      } catch {
+        el('pic').src = FALLBACK_IMG;
+        setState('error');
+      }
+    }
+
+document.addEventListener('DOMContentLoaded', () => {
+      // Barcode scanner — accumulates keystrokes and fires after pause
+      document.addEventListener('keydown', e => {
+        if (e.target === el('code')) return;
+        if (e.key.length === 1) inputBuffer += e.key;
+
+        clearTimeout(bufferTimer);
+        bufferTimer = setTimeout(() => {
+          if (inputBuffer.length > 2) {
+            el('code').value = inputBuffer;
+            fetchProduct(inputBuffer);
+          }
+          inputBuffer = '';
+        }, 150);
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Scan</title>
+<script src="lib/jquery-2.1.3.min.js"></script>
+<link rel="stylesheet" type="text/css" href="scan.css">
+</head>
+<body>
+	<div id="header"></div>
+
+	<div id="pics">
+		<img id="pic" src="" />
+	</div>
+
+	<div id="name-div">
+		<label class="name-label">Název:</label><br> 
+		<label id="name"
+			class="name-value"></label>
+	</div>
+
+	<div id="kliacode-div">
+		<label class="kliacode-label">KÓD:</label><br> 
+		<label id="kliacode"
+			class="kliacode-value"></label>
+	</div>
+
+	<div id="price-div">
+		<label class="price-label">Cena bez DPH</label><br> 
+		<label id="price" class="price-value"></label>
+	</div>
+
+	<div id="error"></div>
+	<div id="code-div">
+		<label>Kod:</label> <input type="text" id="code" /> <span><button
+				id="sendBtn">Odeslat</button> Ean: 8591136910971, 8591136392180,
+			8591136623857 </span>
+	</div>
+
+	<div id="check-price">OVĚŘENÍ CENY ZDE</div>
+
+	<div id="footer">Copyright klia.cz</div>
+
+	<script>
+		var code = "";
+		window.onload = function() {
+			var timeout = 500;
+			var timeoutReference;
+			document.getElementById("sendBtn").addEventListener('click', call);
+			document.addEventListener('keydown', function(event) {
+				code += String.fromCharCode(event.keyCode);
+				if (timeoutReference)
+					clearTimeout(timeoutReference);
+				timeoutReference = setTimeout(function() {
+
+					doneTyping();
+				}, timeout);
+			}, false);
+		}
+
+		function doneTyping() {
+/* 			$("#code").val(code);
+			code = "";
+		 	call();*/
+		}
+
+		/*
+		 brno 192.168.16.5
+		http://192.168.1.5/ praha
+		*/
+		function call() {
+			$.ajax({
+				dataType : "json",
+				url : 'http://localhost:8985/KliaScanner/product/get/'
+						+ $("#code").val(),
+				type : 'GET',
+				success : function(json) {
+					$("#name").html(json.name);
+					$("#price").html(json.price + " Kč/" + json.mUnit);
+					$("#kliacode").html(json.kliaCode);
+					if (json.imageData != null) {
+						$("#pic").attr("src",
+								'data:image/png;base64,' + json.imageData);
+					} else {
+						$("#pic").attr("src", "img/nahlednenikdispozici.png");
+					}
+				},
+				error : function(xhr, ajaxOptions, thrownError) {
+					$("#pic").attr("src", "img/nahlednenikdispozici.png");
+					$("#name").html("Položka nenalezena");
+					$("#price").html("");
+					$("#kliacode").html("");
+				}
+				
+			});
+
+		}
+	</script>
+
+</body>
+</html>
